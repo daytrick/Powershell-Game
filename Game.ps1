@@ -7,6 +7,12 @@ $maze = [Maze]::new()
 # Write-Output "East: " $maze.Grid[0,0].Walls.E
 # Write-Output "West: " $maze.Grid[0,0].Walls.S
 # Write-Output "South: " $maze.Grid[0,0].Walls.W
+# Write-Output $maze.GetStringRep()
+# Write-Output $maze.Grid[1,1]
+# Write-Output "Neighbour: " $maze.PickRandomUnvisitedNeighbourOf(($maze.Grid[1,1]))
+
+# Write-Output "\n"
+Write-Output "Visitations: " $maze.PartitionGrid()
 Write-Output $maze.GetStringRep()
 
 ########## CELL ##########
@@ -43,24 +49,30 @@ class Cell {
         
         # Otherwise, visit the cell
         $this.Visited = $true
-        $this.PrevCell = $currentCell
+
+        # Mark cell
+        if (-not ($null -eq $currentCell)) {
         
-        # Work out which wall to toggle
-        if ($currentCell.r -lt $this.r) {
-            $this.Walls.N = $false
-            $currentCell.Walls.S = $false
-        }
-        elseif ($currentCell.r -gt $this.r) {
-            $this.Walls.S = $false
-            $currentCell.Walls.N = $false
-        }
-        elseif ($currentCell.c -lt $this.c) {
-            $this.Walls.W = $false
-            $currentCell.Walls.E = $false
-        }
-        else {
-            $this.Walls.E = $false
-            $currentCell.Walls.W = $false
+            $this.PrevCell = $currentCell
+            
+            # Work out which wall to toggle
+            if ($currentCell.r -lt $this.r) {
+                $this.Walls.N = $false
+                $currentCell.Walls.S = $false
+            }
+            elseif ($currentCell.r -gt $this.r) {
+                $this.Walls.S = $false
+                $currentCell.Walls.N = $false
+            }
+            elseif ($currentCell.c -lt $this.c) {
+                $this.Walls.W = $false
+                $currentCell.Walls.E = $false
+            }
+            else {
+                $this.Walls.E = $false
+                $currentCell.Walls.W = $false
+            }
+
         }
 
         # Indicate successful visitation
@@ -78,16 +90,14 @@ class Cell {
             $rep += '_'
         }
         else {
-            # $rep += ' '
-            $rep += '1' + $this.Walls.S + '2'
+            $rep += ' '
         }
 
         if ($this.Walls.E) {
             $rep += '|'
         }
         else {
-            # $rep += ' '
-            $rep += '1' + $this.Walls.S + '2'
+            $rep += ' '
         }
 
         return $rep
@@ -103,11 +113,11 @@ class Maze {
     [int] $Width
     [int] $Height
 
-    [Object[,]] $Grid
+    [Cell[,]] $Grid
 
     Maze() {
-        $this.Width = 10
-        $this.Height = 10
+        $this.Width = 5
+        $this.Height = 5
 
         Write-Output "Generating the maze!"
         $this.GenerateMaze()
@@ -117,18 +127,104 @@ class Maze {
 
         Write-Output "In GenerateMaze!"
 
-        $this.Grid = New-Object 'Object[,]' $this.Height,$this.Width
+        $this.Grid = New-Object 'Cell[,]' $this.Height,$this.Width
 
         for ([int] $r = 0; $r -lt $this.Height; $r++) {
             for ([int] $c = 0; $c -lt $this.Width; $c++) {
-                $this.Grid[$r,$c] = [Cell]::new($r, $c)
+                $this.Grid[$c, $r] = [Cell]::new($c, $r)
             }
         }
 
     }
 
 
-    [void] PartitionGrid() {
+    [int16] PartitionGrid() {
+
+        # Choose random initial cell
+        $r = Get-Random -Maximum $this.Height
+        $c = Get-Random -Maximum $this.Width
+        $start = $this.Grid[$c, $r]
+        $start.Visit($null)
+
+        # Create stack
+        $stack = New-Object System.Collections.Stack
+        $stack.Push($start)
+
+        $visitations = 0
+        while ($stack.Count -gt 0) {
+            $currCell = $stack.Pop()
+
+            # Pick random neighbour to visit
+            $neighbour = $this.PickRandomUnvisitedNeighbourOf($currCell)
+            if (($null -ne $neighbour) -and (-not $neighbour.Visited)) {
+                $stack.Push($currCell)
+                $neighbour.Visit($currCell)
+                $stack.Push($neighbour)
+                $visitations++
+            }
+
+            # # Pick random neighbour to visit
+            # $neighbour = $this.PickRandomUnvisitedNeighbourOf($currCell)
+            # $count = 0
+            # while ($neighbour) {
+            #     if (-not $neighbour.Visited) {
+            #         $stack.Push($currCell)
+            #         $neighbour.Visit($currCell)
+            #         $stack.Push($neighbour)
+            #         $currCell = $neighbour
+            #         $visitations++
+            #     }
+            #     $neighbour = $this.PickRandomUnvisitedNeighbourOf($currCell)
+            #     $count++
+            #     Write-Output $count
+            # }
+            
+
+        }
+
+        return $visitations
+        
+    }
+
+    [Cell] PickRandomUnvisitedNeighbourOf([Cell] $currCell) {
+
+        $order = 'E','N','S','W' | Sort-Object {Get-Random}
+
+        for ($i = 0; $i -lt $order.Count; $i++) {
+            
+            $r = $currCell.r
+            $c = $currCell.c
+            switch ($order[$i]) {
+                'N' { 
+                    $r-- 
+                    break
+                }
+                'E' {
+                    $c++ 
+                    break
+                }
+                'S' { 
+                    $r++ 
+                    break
+                }
+                'W' { 
+                    $c-- 
+                    break
+                }
+            }
+
+            $inR = ((0 -le $r) -and ($r -lt $this.Height))
+            $inC = ((0 -le $c) -and ($c -lt $this.Width))
+            if ($inR -and $inC) {
+                $neighbour = $this.Grid[$c, $r]
+                if (-not $neighbour.Visited) {
+                    return $neighbour
+                }
+            }
+
+        }
+
+        return $null
         
     }
 
@@ -155,7 +251,7 @@ class Maze {
         $row = '|'
 
         for ($c = 0; $c -lt $this.Width; $c++) {
-            $row += $this.Grid[$r,$c].GetStringRep()
+            $row += $this.Grid[$c,$r].GetStringRep()
         }
 
         return $row
