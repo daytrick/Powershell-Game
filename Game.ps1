@@ -11,12 +11,16 @@ $maze = [Maze]::new()
 # Write-Output $maze.Grid[1,1]
 # Write-Output "Neighbour: " $maze.PickRandomUnvisitedNeighbourOf(($maze.Grid[1,1]))
 
-# Write-Output "\n"
 Write-Output "Visitations: " $maze.PartitionGrid()
 Write-Output $maze.GetStringRep()
 
+# Write-Output $maze.Grid | Sort-Object -Property Order
+
 ########## CELL ##########
 
+<#
+Cell representation.
+#>
 class Cell {
 
     # Record where it is on the grid
@@ -25,22 +29,40 @@ class Cell {
 
     # Record info about neighbours
     [Hashtable] $Walls
+    [Boolean]   $Peeked
     [Boolean]   $Visited
+    [Cell]      $PeekedFrom
     [Cell]      $PrevCell
+    [int]       $PeekR
+    [int]       $PeekC
+    [int]       $Order
 
 
     # Constructor
-    Cell([int] $r, [int] $c) {
-        $this.r = $r
+    Cell([int] $c, [int] $r) {
         $this.c = $c
+        $this.r = $r
         $this.Walls = @{N = $true; E = $true; S = $true; W = $true}
         Write-Output "walls: " $this.Walls
+        $this.Peeked = $false
         $this.Visited = $false
         $this.PrevCell = $null
+        $this.PeekedFrom = $null
+        $this.PeekR = $null
+        $this.PeekC = $null
+        $this.Order = 0
+    }
+
+    # Peek at the cell
+    [Void] Peek([Cell] $peekedFrom) {
+        $this.PeekedFrom = $peekedFrom
+        $this.Peeked = $true
+        $this.PeekR = $peekedFrom.r
+        $this.PeekC = $peekedFrom.c
     }
 
     # Visit the cell
-    [Boolean] Visit([Cell] $currentCell) {
+    [Boolean] Visit([Cell] $currentCell, [int] $order) {
 
         # Don't visit if already been
         if ($this.Visited) {
@@ -49,6 +71,7 @@ class Cell {
         
         # Otherwise, visit the cell
         $this.Visited = $true
+        $this.Order = $order
 
         # Mark cell
         if (-not ($null -eq $currentCell)) {
@@ -108,6 +131,9 @@ class Cell {
 
 ########## MAZE ##########
 
+<#
+Maze representation.
+#>
 class Maze {
 
     [int] $Width
@@ -116,13 +142,16 @@ class Maze {
     [Cell[,]] $Grid
 
     Maze() {
-        $this.Width = 5
-        $this.Height = 5
+        $this.Width = 10
+        $this.Height = 10
 
         Write-Output "Generating the maze!"
         $this.GenerateMaze()
     }
 
+    <#
+    Generate the basic maze (no connections between cells yet).
+    #>
     [void] GenerateMaze() {
 
         Write-Output "In GenerateMaze!"
@@ -138,47 +167,37 @@ class Maze {
     }
 
 
+    <#
+    Partition the maze.
+    Uses randomised depth-first search: https://en.wikipedia.org/wiki/Maze_generation_algorithm#Iterative_implementation_(with_stack)
+    #>
     [int16] PartitionGrid() {
 
         # Choose random initial cell
         $r = Get-Random -Maximum $this.Height
         $c = Get-Random -Maximum $this.Width
         $start = $this.Grid[$c, $r]
-        $start.Visit($null)
+        $start.Visit($null, 1)
 
-        # Create stack
+        # Create stack and initialise
         $stack = New-Object System.Collections.Stack
         $stack.Push($start)
 
-        $visitations = 0
+        $visitations = 1
+        # While stack not empty ...
         while ($stack.Count -gt 0) {
+
+            # ... set current cell to top of stack
             $currCell = $stack.Pop()
 
-            # Pick random neighbour to visit
+            # Keep going if can (have at least one unvisited neighbour)
             $neighbour = $this.PickRandomUnvisitedNeighbourOf($currCell)
-            if (($null -ne $neighbour) -and (-not $neighbour.Visited)) {
+            if (($null -ne $neighbour)) {
                 $stack.Push($currCell)
-                $neighbour.Visit($currCell)
-                $stack.Push($neighbour)
                 $visitations++
+                $neighbour.Visit($currCell, $visitations)
+                $stack.Push($neighbour)
             }
-
-            # # Pick random neighbour to visit
-            # $neighbour = $this.PickRandomUnvisitedNeighbourOf($currCell)
-            # $count = 0
-            # while ($neighbour) {
-            #     if (-not $neighbour.Visited) {
-            #         $stack.Push($currCell)
-            #         $neighbour.Visit($currCell)
-            #         $stack.Push($neighbour)
-            #         $currCell = $neighbour
-            #         $visitations++
-            #     }
-            #     $neighbour = $this.PickRandomUnvisitedNeighbourOf($currCell)
-            #     $count++
-            #     Write-Output $count
-            # }
-            
 
         }
 
@@ -186,6 +205,11 @@ class Maze {
         
     }
 
+
+    <#
+    Pick a random unvisited neighbour of the provided cell.
+    Returns null if no more unvisited neighbours.
+    #>
     [Cell] PickRandomUnvisitedNeighbourOf([Cell] $currCell) {
 
         $order = 'E','N','S','W' | Sort-Object {Get-Random}
@@ -228,6 +252,10 @@ class Maze {
         
     }
 
+
+    <#
+    Get a string representation of the maze.
+    #>
     [String] GetStringRep() {
 
         $stringRep = ''
@@ -246,6 +274,9 @@ class Maze {
 
     }
 
+    <#
+    Get a string representation of a row of the maze.
+    #>
     [String] GetRowStringRep([int] $r) {
 
         $row = '|'
