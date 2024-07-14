@@ -333,7 +333,6 @@ class Maze {
 }
 
 ########## PLAYER ##########
-
 class Player {
 
     [String] $LEFT     = 'A'
@@ -341,14 +340,14 @@ class Player {
     [String] $RIGHT    = 'D'
     [String] $DOWN     = 'S'
 
-    [Maze] $maze
+    [Maze] $Maze
     [String] $symbol
     [int] $c
     [int] $r
     
     Player([Maze] $maze) {
-        $this.maze = $maze
-        $maze.Grid[0,0].HasPlayer = $true
+        $this.Maze = $maze
+        $this.Maze.Grid[0,0].HasPlayer = $true
         $this.symbol = 'x̲'
         $this.c = 0
         $this.r = 0
@@ -356,29 +355,32 @@ class Player {
 
     [void] Move([System.ConsoleKeyInfo] $key) {
 
-        # How to determine which key gets pressed from: https://stackoverflow.com/a/48662114
+        $currCell = $this.Maze.Grid[$this.c, $this.r]
 
+        # Make sure player doesn't go out of bounds, or ghost through walls
+        # How to determine which key gets pressed from: https://stackoverflow.com/a/48662114
         switch ($key.Key) {
             $this.UP {
-                if ($this.r -gt 0) {
+                if (($this.r -gt 0) -and (-not $currCell.Walls.N)) {
                     $this.r--
                 }
             }
             $this.DOWN {
-                if ($this.r -lt ($this.maze.Height - 1)) {
+                if (($this.r -lt ($this.Maze.Height - 1)) -and (-not $currCell.Walls.S)) {
                     $this.r++
                 }
             }
             $this.LEFT {
-                if ($this.c -gt 0) {
+                if (($this.c -gt 0) -and (-not $currCell.Walls.W)) {
                     $this.c--
                 }
             }
             $this.RIGHT {
-                if ($this.c -lt ($this.maze.Width - 1)) {
+                if (($this.c -lt ($this.Maze.Width - 1)) -and (-not $currCell.Walls.E)) {
                     $this.c++
                 }
             }
+
         }
 
     }
