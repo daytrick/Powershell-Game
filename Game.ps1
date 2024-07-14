@@ -1,27 +1,42 @@
 ########## GAME ##########
 
+# Display maze
 Write-Output "Starting the game!"
 $maze = [Maze]::new()
-
 $maze.PartitionGrid()
 
-$key = ''
+# Game loop
+$count = 1
 $finished = $false
 while (-not $finished) {
 
+    # Display maze
     Clear-Host
+    Write-Output "MAZE" $count
     Write-Output "Use WASD to move."
-
     Write-Output $maze.GetStringRep()
 
     $key = [System.Console]::ReadKey()
-    # Write-Host $key.Key
     if ($key.Key -eq 'escape') {
         break
     }
     else {
         $maze.MovePlayer($key)
     } 
+
+    if ($maze.Goal.HasPlayer) {
+
+        # Inform player
+        Clear-Host
+        Write-Host "MAZE SOLVED"
+        Start-Sleep -Seconds 1
+
+        # Generate new maze
+        $maze = [Maze]::new()
+        $maze.PartitionGrid()
+        $count++
+
+    }
 
 }
 
@@ -48,8 +63,9 @@ class Cell {
     [int]       $PeekC
     [int]       $Order
 
-    # Record player info
+    # Record status
     [Boolean]   $HasPlayer
+    [Boolean]   $IsGoal
 
     # Constructor
     Cell([int] $c, [int] $r) {
@@ -125,9 +141,12 @@ class Cell {
 
         if ($this.Walls.S) {
 
+            # How to print underlined text from: https://www.reddit.com/r/PowerShell/comments/d74lce/comment/f0xhbv3/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
             if ($this.HasPlayer) {
-                # How to print underlined text from: https://www.reddit.com/r/PowerShell/comments/d74lce/comment/f0xhbv3/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
-                $rep += "$([char]27)[4mx$([char]27)[24m"
+                $rep += "$([char]27)[4mo$([char]27)[24m"
+            }
+            elseif ($this.IsGoal) {
+                $rep += "$([char]27)[4mX$([char]27)[24m"
             }
             else {
                 $rep += '_'
@@ -135,7 +154,10 @@ class Cell {
             
         }
         elseif ($this.HasPlayer) {
-            $rep += 'x'
+            $rep += 'o'
+        }
+        elseif ($this.IsGoal) {
+            $rep += 'X'
         }
         else {
             $rep += ' '
@@ -165,6 +187,7 @@ class Maze {
     [int] $Height
 
     [Cell[,]] $Grid
+    [Cell] $Goal
 
     # Record player location
     [Player] $Player
@@ -195,6 +218,9 @@ class Maze {
                 $this.Grid[$c, $r] = [Cell]::new($c, $r)
             }
         }
+
+        $this.Goal = $this.Grid[($this.Width - 1), ($this.Height - 1)]
+        $this.Goal.IsGoal = $true
 
     }
 
@@ -292,6 +318,8 @@ class Maze {
         $this.Grid[$this.Player.c, $this.Player.r].HasPlayer = $true
 
     }
+
+
 
 
     <#
