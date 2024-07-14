@@ -1,8 +1,13 @@
 ########## GAME ##########
 
+# Maze dimensions
+$dim = 10
+$growRate = 5
+$maxDim = 20
+
 # Display maze
 Write-Output "Starting the game!"
-$maze = [Maze]::new()
+$maze = [Maze]::new($dim, $dim)
 $maze.PartitionGrid()
 
 # Game loop
@@ -25,6 +30,7 @@ while (-not $finished) {
         $maze.MovePlayer($key)
     } 
 
+    # Check for win condition
     if ($maze.Goal.HasPlayer) {
 
         # Inform player
@@ -32,10 +38,17 @@ while (-not $finished) {
         Write-Host "MAZE SOLVED"
         Start-Sleep -Seconds 1
 
-        # Generate new maze
-        $maze = [Maze]::new()
-        $maze.PartitionGrid()
+        # Update maze size
         $count++
+        if (($dim -lt $maxDim) -and ($count % $growRate -eq 1)) {
+            $dim++
+        }
+
+        # Generate new maze
+        $maze = [Maze]::new($dim, $dim)
+        $maze.PartitionGrid()
+        
+        
 
     }
 
@@ -193,10 +206,10 @@ class Maze {
     # Record player location
     [Player] $Player
 
-    Maze() {
+    Maze([int] $width, [int] $height) {
 
-        $this.Width = 10
-        $this.Height = 10
+        $this.Width = $width
+        $this.Height = $height
 
         Write-Output "Generating the maze!"
         $this.GenerateMaze()
