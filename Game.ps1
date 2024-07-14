@@ -1,18 +1,44 @@
 ########## GAME ##########
+
+# Display maze
 Write-Output "Starting the game!"
 $maze = [Maze]::new()
-# Write-Output $maze.Grid[0,0]
-# Write-Output "Walls: " $maze.Grid[0,0].Walls
-# Write-Output "North: " $maze.Grid[0,0].Walls.N
-# Write-Output "East: " $maze.Grid[0,0].Walls.E
-# Write-Output "West: " $maze.Grid[0,0].Walls.S
-# Write-Output "South: " $maze.Grid[0,0].Walls.W
-# Write-Output $maze.GetStringRep()
-# Write-Output $maze.Grid[1,1]
-# Write-Output "Neighbour: " $maze.PickRandomUnvisitedNeighbourOf(($maze.Grid[1,1]))
+$maze.PartitionGrid()
 
-Write-Output "Visitations: " $maze.PartitionGrid()
-Write-Output $maze.GetStringRep()
+# Game loop
+$count = 1
+$finished = $false
+while (-not $finished) {
+
+    # Display maze
+    Clear-Host
+    Write-Output "MAZE" $count
+    Write-Output "Use WASD to move."
+    Write-Output $maze.GetStringRep()
+
+    $key = [System.Console]::ReadKey()
+    if ($key.Key -eq 'escape') {
+        break
+    }
+    else {
+        $maze.MovePlayer($key)
+    } 
+
+    if ($maze.Goal.HasPlayer) {
+
+        # Inform player
+        Clear-Host
+        Write-Host "MAZE SOLVED"
+        Start-Sleep -Seconds 1
+
+        # Generate new maze
+        $maze = [Maze]::new()
+        $maze.PartitionGrid()
+        $count++
+
+    }
+
+}
 
 # Write-Output $maze.Grid | Sort-Object -Property Order
 
@@ -37,6 +63,9 @@ class Cell {
     [int]       $PeekC
     [int]       $Order
 
+    # Record status
+    [Boolean]   $HasPlayer
+    [Boolean]   $IsGoal
 
     # Constructor
     Cell([int] $c, [int] $r) {
@@ -51,6 +80,7 @@ class Cell {
         $this.PeekR = $null
         $this.PeekC = $null
         $this.Order = 0
+        $this.HasPlayer = $false
     }
 
     # Peek at the cell
@@ -110,7 +140,24 @@ class Cell {
         $rep = ''
 
         if ($this.Walls.S) {
-            $rep += '_'
+
+            # How to print underlined text from: https://www.reddit.com/r/PowerShell/comments/d74lce/comment/f0xhbv3/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
+            if ($this.HasPlayer) {
+                $rep += "$([char]27)[4mo$([char]27)[24m"
+            }
+            elseif ($this.IsGoal) {
+                $rep += "$([char]27)[4mX$([char]27)[24m"
+            }
+            else {
+                $rep += '_'
+            }
+            
+        }
+        elseif ($this.HasPlayer) {
+            $rep += 'o'
+        }
+        elseif ($this.IsGoal) {
+            $rep += 'X'
         }
         else {
             $rep += ' '
@@ -140,13 +187,21 @@ class Maze {
     [int] $Height
 
     [Cell[,]] $Grid
+    [Cell] $Goal
+
+    # Record player location
+    [Player] $Player
 
     Maze() {
+
         $this.Width = 10
         $this.Height = 10
 
         Write-Output "Generating the maze!"
         $this.GenerateMaze()
+
+        $this.Player = [Player]::new($this)
+
     }
 
     <#
@@ -163,6 +218,9 @@ class Maze {
                 $this.Grid[$c, $r] = [Cell]::new($c, $r)
             }
         }
+
+        $this.Goal = $this.Grid[($this.Width - 1), ($this.Height - 1)]
+        $this.Goal.IsGoal = $true
 
     }
 
@@ -253,6 +311,17 @@ class Maze {
     }
 
 
+    [void] MovePlayer([System.ConsoleKeyInfo] $key) {
+
+        $this.Grid[$this.Player.c, $this.Player.r].HasPlayer = $false
+        $this.Player.Move($key)
+        $this.Grid[$this.Player.c, $this.Player.r].HasPlayer = $true
+
+    }
+
+
+
+
     <#
     Get a string representation of the maze.
     #>
@@ -288,5 +357,61 @@ class Maze {
         return $row
 
     }
+
+}
+
+########## PLAYER ##########
+class Player {
+
+    [String] $LEFT     = 'A'
+    [String] $UP       = 'W'
+    [String] $RIGHT    = 'D'
+    [String] $DOWN     = 'S'
+
+    [Maze] $Maze
+    [String] $symbol
+    [int] $c
+    [int] $r
+    
+    Player([Maze] $maze) {
+        $this.Maze = $maze
+        $this.Maze.Grid[0,0].HasPlayer = $true
+        $this.symbol = 'x̲'
+        $this.c = 0
+        $this.r = 0
+    }
+
+    [void] Move([System.ConsoleKeyInfo] $key) {
+
+        $currCell = $this.Maze.Grid[$this.c, $this.r]
+
+        # Make sure player doesn't go out of bounds, or ghost through walls
+        # How to determine which key gets pressed from: https://stackoverflow.com/a/48662114
+        switch ($key.Key) {
+            $this.UP {
+                if (($this.r -gt 0) -and (-not $currCell.Walls.N)) {
+                    $this.r--
+                }
+            }
+            $this.DOWN {
+                if (($this.r -lt ($this.Maze.Height - 1)) -and (-not $currCell.Walls.S)) {
+                    $this.r++
+                }
+            }
+            $this.LEFT {
+                if (($this.c -gt 0) -and (-not $currCell.Walls.W)) {
+                    $this.c--
+                }
+            }
+            $this.RIGHT {
+                if (($this.c -lt ($this.Maze.Width - 1)) -and (-not $currCell.Walls.E)) {
+                    $this.c++
+                }
+            }
+
+        }
+
+    }
+
 
 }
