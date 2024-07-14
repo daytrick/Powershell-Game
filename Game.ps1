@@ -1,4 +1,6 @@
 ########## GAME ##########
+# $OutputEncoding = [Console]::InputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding
+
 Write-Output "Starting the game!"
 $maze = [Maze]::new()
 # Write-Output $maze.Grid[0,0]
@@ -11,8 +13,31 @@ $maze = [Maze]::new()
 # Write-Output $maze.Grid[1,1]
 # Write-Output "Neighbour: " $maze.PickRandomUnvisitedNeighbourOf(($maze.Grid[1,1]))
 
-Write-Output "Visitations: " $maze.PartitionGrid()
-Write-Output $maze.GetStringRep()
+$maze.PartitionGrid()
+
+$finished = $false
+while (-not $finished) {
+
+    Clear-Host
+    Write-Output "Use WASD to move."
+
+    Write-Output "$([char]27)[4mx$([char]27)[24m"
+
+    Write-Output $maze.GetStringRep()
+
+    $key = [System.Console]::ReadKey()
+    Write-Host $key.Key
+    if ($key.Key -eq 'escape') {
+        break
+    }
+    else {
+        $maze.MovePlayer($key)
+    } 
+
+}
+# Write-Output "Visitations: " $maze.PartitionGrid()
+# Clear-Host
+# Write-Output $maze.GetStringRep()
 
 # Write-Output $maze.Grid | Sort-Object -Property Order
 
@@ -37,6 +62,8 @@ class Cell {
     [int]       $PeekC
     [int]       $Order
 
+    # Record player info
+    [Boolean]   $HasPlayer
 
     # Constructor
     Cell([int] $c, [int] $r) {
@@ -51,6 +78,7 @@ class Cell {
         $this.PeekR = $null
         $this.PeekC = $null
         $this.Order = 0
+        $this.HasPlayer = $false
     }
 
     # Peek at the cell
@@ -110,7 +138,18 @@ class Cell {
         $rep = ''
 
         if ($this.Walls.S) {
-            $rep += '_'
+
+            if ($this.HasPlayer) {
+                # How to print underlined text from: https://www.reddit.com/r/PowerShell/comments/d74lce/comment/f0xhbv3/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
+                $rep += "$([char]27)[4mx$([char]27)[24m"
+            }
+            else {
+                $rep += '_'
+            }
+            
+        }
+        elseif ($this.HasPlayer) {
+            $rep += 'x'
         }
         else {
             $rep += ' '
@@ -141,12 +180,19 @@ class Maze {
 
     [Cell[,]] $Grid
 
+    # Record player location
+    [Player] $Player
+
     Maze() {
+
         $this.Width = 10
         $this.Height = 10
 
         Write-Output "Generating the maze!"
         $this.GenerateMaze()
+
+        $this.Player = [Player]::new($this)
+
     }
 
     <#
@@ -253,6 +299,15 @@ class Maze {
     }
 
 
+    [void] MovePlayer([System.ConsoleKeyInfo] $key) {
+
+        $this.Grid[$this.Player.c, $this.Player.r].HasPlayer = $false
+        $this.Player.Move($key)
+        $this.Grid[$this.Player.c, $this.Player.r].HasPlayer = $true
+
+    }
+
+
     <#
     Get a string representation of the maze.
     #>
@@ -288,5 +343,59 @@ class Maze {
         return $row
 
     }
+
+}
+
+########## PLAYER ##########
+
+class Player {
+
+    [String] $LEFT     = 'aA'
+    [String] $UP       = 'wW'
+    [String] $RIGHT    = 'dD'
+    [String] $DOWN     = 'sS'
+
+    [Maze] $maze
+    [String] $symbol
+    [int] $c
+    [int] $r
+    
+    Player([Maze] $maze) {
+        $this.maze = $maze
+        $maze.Grid[0,0].HasPlayer = $true
+        $this.symbol = 'x̲'
+        $this.c = 0
+        $this.r = 0
+    }
+
+    [void] Move([System.ConsoleKeyInfo] $key) {
+
+        # How to determine which key gets pressed from: https://stackoverflow.com/a/48662114
+
+        switch ($key.Key) {
+            $this.UP {
+                if ($this.r -gt 0) {
+                    $this.r--
+                }
+            }
+            $this.DOWN {
+                if ($this.r -lt ($this.maze.Height - 1)) {
+                    $this.r++
+                }
+            }
+            $this.LEFT {
+                if ($this.c -gt 0) {
+                    $this.c--
+                }
+            }
+            $this.RIGHT {
+                if ($this.c -lt ($this.maze.Width - 1)) {
+                    $this.c++
+                }
+            }
+        }
+
+    }
+
 
 }
