@@ -11,10 +11,11 @@ $finished = $false
 while (-not $finished) {
 
     # Display maze
+    $mazeString = $maze.GetStringRep()
     Clear-Host
     Write-Output "MAZE" $count
     Write-Output "Use WASD to move."
-    Write-Output $maze.GetStringRep()
+    Write-Output $mazeString
 
     $key = [System.Console]::ReadKey()
     if ($key.Key -eq 'escape') {
