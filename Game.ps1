@@ -1,32 +1,21 @@
 ########## GAME ##########
-# $OutputEncoding = [Console]::InputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 Write-Output "Starting the game!"
 $maze = [Maze]::new()
-# Write-Output $maze.Grid[0,0]
-# Write-Output "Walls: " $maze.Grid[0,0].Walls
-# Write-Output "North: " $maze.Grid[0,0].Walls.N
-# Write-Output "East: " $maze.Grid[0,0].Walls.E
-# Write-Output "West: " $maze.Grid[0,0].Walls.S
-# Write-Output "South: " $maze.Grid[0,0].Walls.W
-# Write-Output $maze.GetStringRep()
-# Write-Output $maze.Grid[1,1]
-# Write-Output "Neighbour: " $maze.PickRandomUnvisitedNeighbourOf(($maze.Grid[1,1]))
 
 $maze.PartitionGrid()
 
+$key = ''
 $finished = $false
 while (-not $finished) {
 
     Clear-Host
     Write-Output "Use WASD to move."
 
-    Write-Output "$([char]27)[4mx$([char]27)[24m"
-
     Write-Output $maze.GetStringRep()
 
     $key = [System.Console]::ReadKey()
-    Write-Host $key.Key
+    # Write-Host $key.Key
     if ($key.Key -eq 'escape') {
         break
     }
@@ -35,9 +24,6 @@ while (-not $finished) {
     } 
 
 }
-# Write-Output "Visitations: " $maze.PartitionGrid()
-# Clear-Host
-# Write-Output $maze.GetStringRep()
 
 # Write-Output $maze.Grid | Sort-Object -Property Order
 
@@ -350,10 +336,10 @@ class Maze {
 
 class Player {
 
-    [String] $LEFT     = 'aA'
-    [String] $UP       = 'wW'
-    [String] $RIGHT    = 'dD'
-    [String] $DOWN     = 'sS'
+    [String] $LEFT     = 'A'
+    [String] $UP       = 'W'
+    [String] $RIGHT    = 'D'
+    [String] $DOWN     = 'S'
 
     [Maze] $maze
     [String] $symbol
