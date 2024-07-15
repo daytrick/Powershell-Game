@@ -1,12 +1,15 @@
 ########## GAME ##########
 
+# State
+$STATES = @{START = "start"; PLAYING = "playing"; ENDED = "ENDED"}
+$state = $STATES.START
+
 # Maze dimensions
 $dim = 10
 $growRate = 5
 $maxDim = 20
 
 # Display maze
-Write-Output "Starting the game!"
 $maze = [Maze]::new($dim, $dim)
 $maze.PartitionGrid()
 
@@ -15,40 +18,81 @@ $count = 1
 $finished = $false
 while (-not $finished) {
 
-    # Display maze
-    $mazeString = $maze.GetStringRep()
-    Clear-Host
-    Write-Output "MAZE" $count
-    Write-Output "Use WASD to move."
-    Write-Output $mazeString
+    switch ($state) {
 
-    $key = [System.Console]::ReadKey()
-    if ($key.Key -eq 'escape') {
-        break
-    }
-    else {
-        $maze.MovePlayer($key)
-    } 
-
-    # Check for win condition
-    if ($maze.Goal.HasPlayer) {
-
-        # Inform player
-        Clear-Host
-        Write-Host "MAZE SOLVED"
-        Start-Sleep -Seconds 1
-
-        # Update maze size
-        $count++
-        if (($dim -lt $maxDim) -and ($count % $growRate -eq 1)) {
-            $dim++
+        # Start screen
+        $STATES.START { 
+            Clear-Host
+            Write-Host 'Powershell Maze Game'
+            Read-Host 'Press any key to start'
+            $state = $STATES.PLAYING
         }
 
-        # Generate new maze
-        $maze = [Maze]::new($dim, $dim)
-        $maze.PartitionGrid()
-        
-        
+        # Game
+        $STATES.PLAYING {
+
+            # Display maze
+            $mazeString = $maze.GetStringRep()
+            Clear-Host
+            Write-Output ("Maze " + $count) "Use WASD to move."
+            Write-Output $mazeString
+
+            $key = [System.Console]::ReadKey()
+            if ($key.Key -eq 'escape') {
+                $state = $STATES.ENDED
+                break
+            }
+            else {
+                $maze.MovePlayer($key)
+            } 
+
+            # Check for win condition
+            if ($maze.Goal.HasPlayer) {
+
+                # Inform player
+                Clear-Host
+                Write-Host "MAZE SOLVED"
+                Start-Sleep -Seconds 1
+
+                # Update maze size
+                $count++
+                if (($dim -lt $maxDim) -and ($count % $growRate -eq 1)) {
+                    $dim++
+                }
+
+                # Generate new maze
+                $maze = [Maze]::new($dim, $dim)
+                $maze.PartitionGrid()
+
+            }
+
+            break
+
+        }
+
+        # End screen
+        $STATES.ENDED {
+
+            # Inform player how many got solved
+            Clear-Host
+            $solved = $count - 1
+            Write-Host "xYou solved ${solved} mazes this time."
+            Write-Host
+
+            # Ask if want to play again
+            $again = Read-Host "Would you like to play again? (Y/N)"
+            if ($again -eq "Y") {
+                $count = 1
+                $dim = 10
+                $maze = [Maze]::new($dim, $dim)
+                $maze.PartitionGrid()
+                $state = $STATES.PLAYING
+            }
+            else {
+                $finished = $true
+            }
+            
+        }
 
     }
 
