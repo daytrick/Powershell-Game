@@ -6,6 +6,11 @@ Only works for Windows PCs.
 1. Download `Game.ps1`.
 2. Open up Windows Powershell and navigate to the download location.
 3. Run using the command `. .\Game.ps1`.
+4. If you see the error message
+
+    > Game.ps1 cannot be loaded because running scripts is disabled on this system.
+    
+    you can try the command `powershell -ExecutionPolicy Bypass -File .\Game.ps1` instead, to enable the running of just this script.
 
 ## Playing It
 - The player is represented by `o`.
